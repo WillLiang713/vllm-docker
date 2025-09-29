@@ -1,0 +1,17 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - ./models:/models
+    ports:
+      - "8786:8000"
+    ipc: host
+    command: --model /models/qwen/Qwen3-0___6B
