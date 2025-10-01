@@ -18,7 +18,7 @@ services:
       --model /models/tclf90/Qwen3-Coder-30B-A3B-Instruct-AWQ
       --served-model-name Qwen3-Coder-30B-A3B-Instruct-AWQ
       --tensor-parallel-size 2
-      --max-model-len 131072
+      --max-model-len 266144
       --max-num-seqs 8
       --swap-space 32
       --gpu-memory-utilization 0.95
