@@ -1,117 +1,112 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-从魔塔社区(ModelScope)下载模型的脚本
-"""
+"""从魔塔社区(ModelScope)下载模型的脚本,支持断点续传和完整性校验"""
 
 import os
 import sys
-import signal
-import threading
-import time
 from modelscope import snapshot_download
+from modelscope.hub.api import HubApi
 
-# 全局变量用于跟踪下载状态
-interrupted = False
-download_thread = None
-
-def signal_handler(sig, frame):
-    """处理Ctrl+C中断信号"""
-    global interrupted
-    print("\n检测到中断信号，正在停止下载...")
-    interrupted = True
-    # 强制退出程序
-    os._exit(0)
-
-def download_with_interrupt(model_id, local_dir):
-    """支持中断的下载函数"""
-    global interrupted
-    try:
-        while not interrupted:
-            try:
-                model_path = snapshot_download(
-                    model_id, 
-                    cache_dir=local_dir
-                )
-                return model_path
-            except KeyboardInterrupt:
-                print("\n下载被键盘中断")
-                interrupted = True
-                return None
-            except Exception as e:
-                if interrupted:
-                    return None
-                print(f"下载出错: {e}")
-                return None
-    except Exception as e:
-        if not interrupted:
-            print(f"下载过程异常: {e}")
-        return None
-
-# 注册信号处理器
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
-
-def download_model(model_id, local_dir="./models"):
+def verify_model(model_id, local_dir):
     """
-    从ModelScope下载模型
-    
+    校验模型文件完整性
+
     Args:
-        model_id (str): 模型ID，例如 "qwen/Qwen3-0.6B"
-        local_dir (str): 本地存储目录，默认为 "./models"
-    
+        model_id: 模型ID
+        local_dir: 本地存储目录
+
+    Returns:
+        bool: 是否完整
+    """
+    try:
+        # 获取模型的远程文件列表
+        api = HubApi()
+        model_files = api.get_model_files(model_id)
+
+        print("正在校验模型文件...")
+
+        # 使用原始路径: models/okwinds/Qwen3-xxx
+        model_dir = os.path.join(local_dir, model_id)
+
+        if not os.path.exists(model_dir):
+            print(f"未找到模型目录: {model_dir}")
+            return False
+
+        print(f"检查目录: {model_dir}")
+
+        # 统计文件数量
+        total_files = len(model_files)
+        print(f"需要校验 {total_files} 个文件")
+
+        # 检查每个必需的文件是否存在
+        for i, file_info in enumerate(model_files, 1):
+            file_path = os.path.join(model_dir, file_info['Path'])
+            if not os.path.exists(file_path):
+                print(f"[{i}/{total_files}] 缺失文件: {file_info['Path']}")
+                return False
+
+            # 检查文件大小
+            local_size = os.path.getsize(file_path)
+            remote_size = file_info.get('Size', 0)
+            if remote_size > 0 and local_size != remote_size:
+                print(f"[{i}/{total_files}] 文件大小不匹配: {file_info['Path']}")
+                print(f"  本地大小: {local_size} 字节, 远程大小: {remote_size} 字节")
+                return False
+
+        print(f"所有 {total_files} 个文件校验通过")
+        return True
+    except Exception as e:
+        print(f"校验失败: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def download_model(model_id, local_dir="./models", verify=True):
+    """
+    从ModelScope下载模型,支持断点续传
+
+    Args:
+        model_id: 模型ID,例如 "qwen/Qwen3-0.6B"
+        local_dir: 本地存储目录,默认为 "./models"
+        verify: 是否在下载后校验完整性
+
     Returns:
         str: 模型存储路径
     """
-    try:
-        # 创建本地目录（如果不存在）
-        os.makedirs(local_dir, exist_ok=True)
-        
-        # 下载模型
-        print(f"开始下载模型: {model_id}")
-        print(f"存储路径: {local_dir}")
-        print("按 Ctrl+C 可中断下载")
-        
-        try:
-            model_path = download_with_interrupt(model_id, local_dir)
-            
-            if model_path is None or interrupted:
-                print("下载被取消或中断")
-                return None
-                
-        except KeyboardInterrupt:
-            print("\n下载被键盘中断")
+    os.makedirs(local_dir, exist_ok=True)
+    print(f"开始下载模型: {model_id}")
+    print(f"存储路径: {local_dir}\n")
+
+    model_path = snapshot_download(model_id, cache_dir=local_dir)
+    print(f"\n模型下载完成: {model_path}")
+
+    # 校验模型完整性
+    if verify:
+        if verify_model(model_id, local_dir):
+            print("✓ 模型下载完整")
+        else:
+            print("✗ 模型可能不完整,建议重新下载")
             return None
-        except Exception as e:
-            if not interrupted:
-                print(f"下载出错: {e}")
-            return None
-        
-        print(f"模型下载完成，存储在: {model_path}")
-        return model_path
-        
-    except Exception as e:
-        print(f"下载模型时出错: {e}")
-        sys.exit(1)
+
+    return model_path
 
 if __name__ == "__main__":
-    # 默认下载Qwen3-0.6B模型
-    model_id = "qwen/Qwen3-0.6B"
-    local_dir = "./models"
-    
-    # 如果提供了命令行参数，则使用参数指定的模型
-    if len(sys.argv) > 1:
-        model_id = sys.argv[1]
-    
-    if len(sys.argv) > 2:
-        local_dir = sys.argv[2]
-    
-    try:
-        # 下载模型
+    # 解析命令行参数
+    if len(sys.argv) > 1 and sys.argv[1] == "--verify":
+        # 仅校验模式
+        model_id = sys.argv[2] if len(sys.argv) > 2 else "qwen/Qwen3-0.6B"
+        local_dir = sys.argv[3] if len(sys.argv) > 3 else "./models"
+
+        print(f"校验模型: {model_id}")
+        if verify_model(model_id, local_dir):
+            print("✓ 模型完整")
+            sys.exit(0)
+        else:
+            print("✗ 模型不完整")
+            sys.exit(1)
+    else:
+        # 下载模式
+        model_id = sys.argv[1] if len(sys.argv) > 1 else "qwen/Qwen3-0.6B"
+        local_dir = sys.argv[2] if len(sys.argv) > 2 else "./models"
+
         download_model(model_id, local_dir)
-    except KeyboardInterrupt:
-        print("\n程序被用户中断")
-        sys.exit(0)
-    except Exception as e:
-        print(f"程序执行出错: {e}")
-        sys.exit(1)
