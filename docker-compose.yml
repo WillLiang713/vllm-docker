@@ -17,7 +17,7 @@ services:
     command: >
       --model /models/Eslzzyl/Qwen3-4B-Instruct-2507-AWQ
       --served-model-name Qwen3-4B-Instruct-2507-AWQ
-      --api-key liangmj@123
+      --api-key xxx
       --max-model-len 32768
       --max-num-seqs 1
       --swap-space 10
