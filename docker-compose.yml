@@ -1,6 +1,7 @@
 services:
-  Qwen3-4B-Instruct-2507-AWQ:
+  vllm:
     image: vllm/vllm-openai:latest
+    container_name: Qwen3-Coder-30B-A3B-Instruct-Int4-W4A16
     runtime: nvidia
     deploy:
       resources:
@@ -15,14 +16,18 @@ services:
       - "8786:8000"
     ipc: host
     command: >
-      --model /models/Eslzzyl/Qwen3-4B-Instruct-2507-AWQ
-      --served-model-name Qwen3-4B-Instruct-2507-AWQ
-      --api-key xxx
-      --max-model-len 32768
-      --max-num-seqs 1
-      --swap-space 10
+      --model /models/okwinds/Qwen3-Coder-30B-A3B-Instruct-Int8-W8A16
+      --served-model-name Qwen3-Coder-30B-A3B-Instruct-Int8-W8A16
+      --api-key rks@D308
+      --dtype bfloat16
+      --kv-cache-dtype fp8
+      --enable-chunked-prefill
+      --tensor-parallel-size 2
+      --max-model-len 262144
+      --max-num-seqs 10
+      --swap-space 32
       --gpu-memory-utilization 0.9
       --enable-auto-tool-choice
-      --tool-call-parser hermes
+      --tool-call-parser qwen3_coder
       --trust-remote-code
       --disable-log-requests
