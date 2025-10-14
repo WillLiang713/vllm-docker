@@ -1,5 +1,6 @@
 services:
-  Qwen3-4B-Instruct-2507-AWQ:
+  vllm:
+    container_name: Qwen3-4B-Instruct-2507-AWQ
     image: vllm/vllm-openai:latest
     runtime: nvidia
     deploy:
