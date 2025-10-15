@@ -3,14 +3,13 @@ services:
     image: vllm/vllm-openai:latest
     container_name: Qwen3-VL-30B-A3B-Instruct-AWQ-8bit
     runtime: nvidia
-     deploy:
+    deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
-            capabilities: [gpu]
-            device_ids: ['1']
+              count: all
+              capabilities: [gpu]
     volumes:
       - ./models:/models
     ports:
@@ -23,8 +22,8 @@ services:
       --dtype bfloat16
       --kv-cache-dtype fp8
       --enable-chunked-prefill
-      --tensor-parallel-size 1
-      --max-model-len 8192
+      --tensor-parallel-size 2
+      --max-model-len 262144
       --max-num-seqs 10
       --swap-space 20
       --gpu-memory-utilization 0.9
