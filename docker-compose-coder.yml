@@ -1,0 +1,34 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: Qwen3-Coder-30B-A3B-Instruct-Int4-W4A16
+    runtime: nvidia
+     deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+            capabilities: [gpu]
+            device_ids: ['0']
+    volumes:
+      - ./models:/models
+    ports:
+      - "8786:8000"
+    ipc: host
+    command: >
+      --model /models/okwinds/Qwen3-Coder-30B-A3B-Instruct-Int8-W8A16
+      --served-model-name Qwen3-Coder-30B-A3B-Instruct-Int8-W8A16
+      --api-key rks@D308
+      --dtype bfloat16
+      --kv-cache-dtype fp8
+      --enable-chunked-prefill
+      --tensor-parallel-size 1
+      --max-model-len 65536
+      --max-num-seqs 10
+      --swap-space 20
+      --gpu-memory-utilization 0.9
+      --enable-auto-tool-choice
+      --tool-call-parser qwen3_coder
+      --trust-remote-code
+      --disable-log-requests

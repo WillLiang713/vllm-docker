@@ -1,0 +1,34 @@
+services:
+  vllm:
+    image: vllm/vllm-openai:latest
+    container_name: Qwen3-VL-30B-A3B-Instruct-AWQ-8bit
+    runtime: nvidia
+     deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+            capabilities: [gpu]
+            device_ids: ['1']
+    volumes:
+      - ./models:/models
+    ports:
+      - "8785:8000"
+    ipc: host
+    command: >
+      --model /models/cpatonn-mirror/Qwen3-VL-30B-A3B-Instruct-AWQ-8bit
+      --served-model-name Qwen3-VL-30B-A3B-Instruct-AWQ-8bit
+      --api-key rks@D308
+      --dtype bfloat16
+      --kv-cache-dtype fp8
+      --enable-chunked-prefill
+      --tensor-parallel-size 1
+      --max-model-len 8192
+      --max-num-seqs 10
+      --swap-space 20
+      --gpu-memory-utilization 0.9
+      --enable-auto-tool-choice
+      --tool-call-parser hermes
+      --trust-remote-code
+      --disable-log-requests
