@@ -2,3 +2,4 @@
 models
 *.tar
 .idea
+.vscode
